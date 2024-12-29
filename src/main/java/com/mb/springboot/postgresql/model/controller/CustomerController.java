@@ -1,9 +1,8 @@
 package com.mb.springboot.postgresql.model.controller;
 
 import com.mb.springboot.postgresql.model.domain.Customer;
-import com.mb.springboot.postgresql.model.repository.CustomerRepository;
+import com.mb.springboot.postgresql.model.service.CustomerService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -11,13 +10,15 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 
+import java.util.Optional;
+
 @Controller
 public class CustomerController {
-    private final CustomerRepository customerRepository;
 
-    @Autowired
-    public CustomerController(CustomerRepository customerRepository) {
-        this.customerRepository = customerRepository;
+    private final CustomerService customerService;
+
+    public CustomerController(CustomerService customerService) {
+        this.customerService = customerService;
     }
 
     @GetMapping("/new")
@@ -27,23 +28,25 @@ public class CustomerController {
 
     @GetMapping("/edit/{id}")
     public String showUpdateForm(@PathVariable("id") long id, Model model) {
-        Customer customer =
-                customerRepository
-                        .findById(id)
-                        .orElseThrow(() -> new IllegalArgumentException("Invalid customer Id:" + id));
-        model.addAttribute("customer", customer);
-        return "update-customer";
+        Optional<Customer> customer = customerService.getCustomerById(id);
+        if(customer.isPresent()){
+            model.addAttribute("customer", customer);
+            return "update-customer";
+        }else {
+            throw new IllegalArgumentException("Invalid customer Id:" + id);
+        }
     }
 
     @GetMapping("/delete/{id}")
     public String deleteUser(@PathVariable("id") long id, Model model) {
-        Customer customer =
-                customerRepository
-                        .findById(id)
-                        .orElseThrow(() -> new IllegalArgumentException("Invalid customer Id:" + id));
-        customerRepository.delete(customer);
-        model.addAttribute("customers", customerRepository.findAll());
-        return "index";
+        Optional<Customer> customer = customerService.getCustomerById(id);
+        if(customer.isPresent()){
+            customerService.deleteCustomer(id);
+            model.addAttribute("customers", customerService.getAllCustomers());
+            return "index";
+        }else {
+            throw new IllegalArgumentException("Invalid customer Id:" + id);
+        }
     }
 
     @PostMapping("/addcustomer")
@@ -51,8 +54,8 @@ public class CustomerController {
         if (result.hasErrors()) {
             return "add-customer";
         }
-        customerRepository.save(customer);
-        model.addAttribute("customers", customerRepository.findAll());
+        customerService.saveCustomer(customer);
+        model.addAttribute("customers", customerService.getAllCustomers());
         return "index";
     }
 
@@ -63,8 +66,8 @@ public class CustomerController {
             customer.setId(id);
             return "update-customer";
         }
-        customerRepository.save(customer);
-        model.addAttribute("customers", customerRepository.findAll());
+        customerService.saveCustomer(customer);
+        model.addAttribute("customers", customerService.getAllCustomers());
         return "index";
     }
 }
